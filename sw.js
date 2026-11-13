@@ -1,6 +1,59 @@
-const CACHE='yagba-4-shell-v1';
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','./LIMKOKWING_YAGBA_4.0.html','./manifest.webmanifest','./icon.svg']))));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
-self.addEventListener('fetch',e=>{if(e.request.method==='GET'&&new URL(e.request.url).origin===location.origin)e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{if(r.ok){let copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return r}).catch(()=>caches.match('./LIMKOKWING_YAGBA_4.0.html'))))});
-self.addEventListener('push',e=>{let d={title:'LIMKOKWING YAGBA',body:'You have a study reminder.',url:'./LIMKOKWING_YAGBA_4.0.html'};try{d={...d,...e.data.json()}}catch{}e.waitUntil(self.registration.showNotification(d.title,{body:d.body,icon:'./icon.svg',badge:'./icon.svg',data:{url:d.url},tag:d.tag||'yagba-reminder'}))});
-self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{let target=e.notification.data?.url||'./';for(const c of cs)if('focus'in c)return c.navigate(target).then(()=>c.focus());return clients.openWindow(target)}))});
+const CACHE = 'yagba-4-shell-v2';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+  event.respondWith(
+    caches.match(request).then(hit => hit || fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }).catch(() => caches.match('./index.html'))),
+  );
+});
+
+self.addEventListener('push', event => {
+  let data = { title: 'LIMKOKWING YAGBA', body: 'You have a study reminder.', url: self.registration.scope };
+  try {
+    data = { ...data, ...event.data.json() };
+  } catch {
+    // Use the default reminder if the push payload is not JSON.
+  }
+  const url = new URL(data.url || './', self.registration.scope).href;
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: './icon.svg',
+    badge: './icon.svg',
+    data: { url },
+    tag: data.tag || 'yagba-reminder',
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || './', self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => {
+    for (const client of clients) {
+      if ('focus' in client) {
+        await client.navigate(target);
+        return client.focus();
+      }
+    }
+    return self.clients.openWindow(target);
+  }));
+});
