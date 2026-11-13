@@ -1,0 +1,6 @@
+const CACHE='yagba-4-shell-v1';
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','./LIMKOKWING_YAGBA_4.0.html','./manifest.webmanifest','./icon.svg']))));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
+self.addEventListener('fetch',e=>{if(e.request.method==='GET'&&new URL(e.request.url).origin===location.origin)e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(r=>{if(r.ok){let copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return r}).catch(()=>caches.match('./LIMKOKWING_YAGBA_4.0.html'))))});
+self.addEventListener('push',e=>{let d={title:'LIMKOKWING YAGBA',body:'You have a study reminder.',url:'./LIMKOKWING_YAGBA_4.0.html'};try{d={...d,...e.data.json()}}catch{}e.waitUntil(self.registration.showNotification(d.title,{body:d.body,icon:'./icon.svg',badge:'./icon.svg',data:{url:d.url},tag:d.tag||'yagba-reminder'}))});
+self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{let target=e.notification.data?.url||'./';for(const c of cs)if('focus'in c)return c.navigate(target).then(()=>c.focus());return clients.openWindow(target)}))});
